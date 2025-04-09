@@ -121,7 +121,7 @@ class TypingGame:
         self.mode_frame.pack_forget()
         self.ip_frame.pack(pady=10)
         host_ip = socket.gethostbyname(socket.gethostname())
-        self.ip_label.config(text=f"你的 IP 地址: {host_ip}")
+        self.ip_label.config(text=f"你的內網 IP: {host_ip}\n請查詢公網 IP (例如透過 whatismyip.com) 並分享給 Client。\n請在路由器上設置端口轉發到 {host_ip}:12345")
         self.network = NetworkHandler(True, host_ip, 12345)
         self.network.start()
 
