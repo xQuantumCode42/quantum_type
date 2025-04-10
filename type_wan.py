@@ -6,69 +6,78 @@ import threading
 import queue
 import time
 
-# 網路通訊處理類
+# 網路通訊處理類（保持不變）
 class NetworkHandler:
-    def __init__(self, is_host, host_ip, port):
+    def __init__(self, is_host, ip, port):
         self.is_host = is_host
-        self.host_ip = host_ip
+        self.ip = ip
         self.port = port
-        self.queue = queue.Queue()
-        self.client_socket = None
-        self.server_socket = None
-        if is_host:
-            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server_socket.bind((host_ip, port))
-            self.server_socket.listen(1)
-        else:
-            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect((host_ip, port))
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.clients = []
+        self.running = True
 
     def start(self):
         if self.is_host:
-            threading.Thread(target=self.accept_client).start()
-        else:
-            threading.Thread(target=self.receive_messages).start()
+            self.sock.bind((self.ip, self.port))
+            self.sock.listen(1)
+            threading.Thread(target=self.accept_clients, daemon=True).start()
+        threading.Thread(target=self.receive_messages, daemon=True).start()
 
-    def accept_client(self):
-        self.client_socket, addr = self.server_socket.accept()
-        print("Client connected")
-        self.queue.put({"type": "CLIENT_JOINED"})
-        threading.Thread(target=self.receive_messages).start()
+    def accept_clients(self):
+        while self.running:
+            conn, addr = self.sock.accept()
+            self.clients.append(conn)
+            msg = {"type": "CLIENT_JOINED"}
+            conn.send(json.dumps(msg).encode())
 
     def receive_messages(self):
-        while True:
-            try:
-                data = self.client_socket.recv(1024)
-                if not data:
-                    break
-                msg = json.loads(data.decode())
-                self.queue.put(msg)
-            except Exception as e:
-                print(f"Error receiving message: {e}")
-                break
+        while self.running:
+            if self.is_host:
+                for client in self.clients[:]:
+                    try:
+                        data = client.recv(1024).decode()
+                        if data:
+                            msg = json.loads(data)
+                            game.queue.put(msg)
+                            for c in self.clients:
+                                c.send(json.dumps(msg).encode())
+                    except:
+                        self.clients.remove(client)
+            else:
+                try:
+                    data = self.sock.recv(1024).decode()
+                    if data:
+                        msg = json.loads(data)
+                        game.queue.put(msg)
+                except:
+                    self.running = False
 
     def send_message(self, msg):
-        data = json.dumps(msg).encode()
-        if self.is_host and self.client_socket:
-            self.client_socket.send(data)
-        elif not self.is_host:
-            self.client_socket.send(data)
+        if self.is_host:
+            for client in self.clients:
+                client.send(json.dumps(msg).encode())
+        else:
+            self.sock.send(json.dumps(msg).encode())
+
+    def connect(self, host_ip):
+        self.sock.connect((host_ip, self.port))
 
 # 打字遊戲主類
 class TypingGame:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("英文打字遊戲 - 多人版")
+        self.root.title("英文打字遊戲")
         self.root.geometry("800x600")
         self.is_host = None
+        self.is_single_player = False  # 新增單人模式標誌
         self.network = None
         self.queue = queue.Queue()
         self.game_started = False
         self.start_time = None
-        self.host_progress = 0
-        self.client_progress = 0
-        self.host_score = 0
-        self.client_score = 0
+        self.my_progress = 0
+        self.my_score = 0
+        self.opponent_progress = 0
+        self.opponent_score = 0
         self.text_content = ""
         self.setup_ui()
 
@@ -79,6 +88,7 @@ class TypingGame:
         tk.Label(self.mode_frame, text="選擇模式：").pack(side=tk.LEFT)
         tk.Button(self.mode_frame, text="建立房間 (Host)", command=self.set_host_mode).pack(side=tk.LEFT, padx=10)
         tk.Button(self.mode_frame, text="加入房間 (Client)", command=self.set_client_mode).pack(side=tk.LEFT, padx=10)
+        tk.Button(self.mode_frame, text="單人模式", command=self.set_single_player_mode).pack(side=tk.LEFT, padx=10)
 
         # IP 相關介面
         self.ip_frame = tk.Frame(self.root)
@@ -94,18 +104,18 @@ class TypingGame:
         # 文本顯示區域
         self.text_frame = tk.Frame(self.root)
         self.text_frame.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
-        self.host_text = tk.Text(self.text_frame, wrap=tk.WORD, font=("Courier", 12), state=tk.DISABLED, height=10)
-        self.host_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
-        self.client_text = tk.Text(self.text_frame, wrap=tk.WORD, font=("Courier", 12), state=tk.DISABLED, height=10)
-        self.client_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.my_text = tk.Text(self.text_frame, wrap=tk.WORD, font=("Courier", 12), state=tk.DISABLED, height=10)
+        self.my_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.opponent_text = tk.Text(self.text_frame, wrap=tk.WORD, font=("Courier", 12), state=tk.DISABLED, height=10)
+        self.opponent_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
 
         # 分數和時間顯示
         self.score_frame = tk.Frame(self.root)
         self.score_frame.pack(pady=5)
-        self.host_score_label = tk.Label(self.score_frame, text="Host 分數: 0")
-        self.host_score_label.pack(side=tk.LEFT, padx=20)
-        self.client_score_label = tk.Label(self.score_frame, text="Client 分數: 0")
-        self.client_score_label.pack(side=tk.LEFT, padx=20)
+        self.my_score_label = tk.Label(self.score_frame, text="我的分數: 0")
+        self.my_score_label.pack(side=tk.LEFT, padx=20)
+        self.opponent_score_label = tk.Label(self.score_frame, text="對手分數: 0")
+        self.opponent_score_label.pack(side=tk.LEFT, padx=20)
         self.timer_label = tk.Label(self.score_frame, text="剩餘時間: 60")
         self.timer_label.pack(side=tk.LEFT, padx=20)
 
@@ -116,17 +126,27 @@ class TypingGame:
         self.root.bind("<KeyPress>", self.on_key_press)
         self.process_queue()
 
+    def set_single_player_mode(self):
+        self.is_single_player = True
+        self.mode_frame.pack_forget()
+        self.ip_frame.pack_forget()  # 隱藏 IP 相關介面
+        self.start_button.config(state=tk.NORMAL)  # 直接啟用開始按鈕
+        self.opponent_text.pack_forget()  # 隱藏對手文本框
+        self.opponent_score_label.pack_forget()  # 隱藏對手分數
+
     def set_host_mode(self):
         self.is_host = True
+        self.is_single_player = False
         self.mode_frame.pack_forget()
         self.ip_frame.pack(pady=10)
         host_ip = socket.gethostbyname(socket.gethostname())
-        self.ip_label.config(text=f"你的內網 IP: {host_ip}\n請查詢公網 IP (例如透過 whatismyip.com) 並分享給 Client。\n請在路由器上設置端口轉發到 {host_ip}:12345")
+        self.ip_label.config(text=f"你的 IP 地址: {host_ip}")
         self.network = NetworkHandler(True, host_ip, 12345)
         self.network.start()
 
     def set_client_mode(self):
         self.is_host = False
+        self.is_single_player = False
         self.mode_frame.pack_forget()
         self.ip_frame.pack(pady=10)
         self.ip_label.config(text="輸入 Host IP 地址:")
@@ -135,36 +155,36 @@ class TypingGame:
 
     def connect_to_host(self):
         host_ip = self.ip_entry.get()
-        if host_ip:
-            self.network = NetworkHandler(False, host_ip, 12345)
-            self.network.start()
-            self.ip_frame.pack_forget()
-            messagebox.showinfo("連接成功", "已連接到 Host")
+        self.network = NetworkHandler(False, host_ip, 12345)
+        self.network.connect(host_ip)
+        self.network.start()
+        self.ip_frame.pack_forget()
 
     def load_text(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
         if file_path:
             with open(file_path, 'r', encoding='utf-8') as file:
                 self.text_content = file.read()
-                self.host_text.config(state=tk.NORMAL)
-                self.host_text.delete(1.0, tk.END)
-                self.host_text.insert(tk.END, self.text_content)
-                self.host_text.config(state=tk.DISABLED)
-                self.client_text.config(state=tk.NORMAL)
-                self.client_text.delete(1.0, tk.END)
-                self.client_text.insert(tk.END, self.text_content)
-                self.client_text.config(state=tk.DISABLED)
-                if self.is_host:
+                self.my_text.config(state=tk.NORMAL)
+                self.my_text.delete(1.0, tk.END)
+                self.my_text.insert(tk.END, self.text_content)
+                self.my_text.config(state=tk.DISABLED)
+                if not self.is_single_player:
+                    self.opponent_text.config(state=tk.NORMAL)
+                    self.opponent_text.delete(1.0, tk.END)
+                    self.opponent_text.insert(tk.END, self.text_content)
+                    self.opponent_text.config(state=tk.DISABLED)
+                if self.is_host or self.is_single_player:
                     self.start_button.config(state=tk.NORMAL)
 
     def start_game(self):
-        if self.is_host:
-            self.start_time = time.time()
+        self.start_time = time.time()
+        self.game_started = True
+        self.start_timer()
+        self.root.focus_set()
+        if not self.is_single_player and self.is_host:
             msg = {"type": "START", "start_time": self.start_time}
             self.network.send_message(msg)
-            self.game_started = True
-            self.start_timer()
-            self.root.focus_set()
 
     def start_timer(self):
         if self.game_started:
@@ -178,10 +198,12 @@ class TypingGame:
 
     def end_game(self):
         self.game_started = False
-        if self.is_host:
-            if self.host_score > self.client_score:
+        if self.is_single_player:
+            messagebox.showinfo("遊戲結束", f"你的分數: {self.my_score}")
+        elif self.is_host:
+            if self.my_score > self.opponent_score:
                 winner = "Host"
-            elif self.client_score > self.host_score:
+            elif self.opponent_score > self.my_score:
                 winner = "Client"
             else:
                 winner = "平手"
@@ -190,28 +212,39 @@ class TypingGame:
             self.show_result(winner)
         self.root.unbind("<KeyPress>")
 
-    def show_result(self, winner):
-        messagebox.showinfo("遊戲結束", f"獲勝者: {winner}")
-
     def on_key_press(self, event):
         if self.game_started:
             text = self.text_content
-            if self.is_host:
-                if event.char == text[self.host_progress]:
-                    self.host_progress += 1
-                    self.host_score += 1
-                    self.update_progress(self.host_text, self.host_progress)
-                    self.host_score_label.config(text=f"Host 分數: {self.host_score}")
-                    msg = {"type": "PROGRESS", "index": self.host_progress, "score": self.host_score}
-                    self.network.send_message(msg)
-            else:
-                if event.char == text[self.client_progress]:
-                    self.client_progress += 1
-                    self.client_score += 1
-                    self.update_progress(self.client_text, self.client_progress)
-                    self.client_score_label.config(text=f"Client 分數: {self.client_score}")
-                    msg = {"type": "PROGRESS", "index": self.client_progress, "score": self.client_score}
-                    self.network.send_message(msg)
+            if self.my_progress < len(text):
+                current_char = text[self.my_progress]
+                if current_char == '\n':  # 當前字符是換行符
+                    if event.keysym == "Return":  # 玩家按下 Enter 鍵
+                        self.my_progress += 1
+                        self.my_score += 1
+                        self.update_progress(self.my_text, self.my_progress)
+                        self.my_score_label.config(text=f"我的分數: {self.my_score}")
+                        if not self.is_single_player:
+                            msg = {"type": "PROGRESS", "index": self.my_progress, "score": self.my_score}
+                            self.network.send_message(msg)
+                    else:
+                        # 錯誤輸入，顯示紅色高亮提示
+                        self.my_text.tag_add("error", f"1.0 + {self.my_progress} chars", f"1.0 + {self.my_progress + 1} chars")
+                        self.my_text.tag_config("error", background="red")
+                        self.root.after(500, lambda: self.my_text.tag_remove("error", 1.0, tk.END))
+                else:  # 當前字符不是換行符
+                    if event.char == current_char:
+                        self.my_progress += 1
+                        self.my_score += 1
+                        self.update_progress(self.my_text, self.my_progress)
+                        self.my_score_label.config(text=f"我的分數: {self.my_score}")
+                        if not self.is_single_player:
+                            msg = {"type": "PROGRESS", "index": self.my_progress, "score": self.my_score}
+                            self.network.send_message(msg)
+                    else:
+                        # 錯誤輸入，顯示紅色高亮提示
+                        self.my_text.tag_add("error", f"1.0 + {self.my_progress} chars", f"1.0 + {self.my_progress + 1} chars")
+                        self.my_text.tag_config("error", background="red")
+                        self.root.after(500, lambda: self.my_text.tag_remove("error", 1.0, tk.END))
 
     def update_progress(self, text_widget, index):
         text_widget.tag_remove("current", 1.0, tk.END)
@@ -220,12 +253,13 @@ class TypingGame:
             text_widget.tag_config("current", background="yellow")
 
     def process_queue(self):
-        try:
-            while True:
-                msg = self.queue.get_nowait()
-                self.handle_message(msg)
-        except queue.Empty:
-            pass
+        if not self.is_single_player:
+            try:
+                while True:
+                    msg = self.queue.get_nowait()
+                    self.handle_message(msg)
+            except queue.Empty:
+                pass
         self.root.after(100, self.process_queue)
 
     def handle_message(self, msg):
@@ -238,20 +272,17 @@ class TypingGame:
             self.start_timer()
             self.root.focus_set()
         elif msg["type"] == "PROGRESS":
-            if self.is_host:
-                self.client_progress = msg["index"]
-                self.client_score = msg["score"]
-                self.update_progress(self.client_text, self.client_progress)
-                self.client_score_label.config(text=f"Client 分數: {self.client_score}")
-            else:
-                self.host_progress = msg["index"]
-                self.host_score = msg["score"]
-                self.update_progress(self.host_text, self.host_progress)
-                self.host_score_label.config(text=f"Host 分數: {self.host_score}")
+            self.opponent_progress = msg["index"]
+            self.opponent_score = msg["score"]
+            self.update_progress(self.opponent_text, self.opponent_progress)
+            self.opponent_score_label.config(text=f"對手分數: {self.opponent_score}")
         elif msg["type"] == "END":
             self.game_started = False
             self.show_result(msg["winner"])
             self.root.unbind("<KeyPress>")
+
+    def show_result(self, winner):
+        messagebox.showinfo("遊戲結束", f"勝者: {winner}\n我的分數: {self.my_score}\n對手分數: {self.opponent_score}")
 
 if __name__ == "__main__":
     game = TypingGame()
