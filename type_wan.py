@@ -8,10 +8,11 @@ import time
 
 # 網路通訊處理類（保持不變）
 class NetworkHandler:
-    def __init__(self, is_host, ip, port):
+    def __init__(self, is_host, ip, port, game):
         self.is_host = is_host
         self.ip = ip
         self.port = port
+        self.game = game  # 保存 TypingGame 實例
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients = []
         self.running = True
@@ -27,8 +28,13 @@ class NetworkHandler:
         while self.running:
             conn, addr = self.sock.accept()
             self.clients.append(conn)
+            # 發送 CLIENT_JOINED 消息
             msg = {"type": "CLIENT_JOINED"}
             conn.send(json.dumps(msg).encode())
+            # 如果主機已加載文本，發送 LOAD_TEXT 消息
+            if self.game.text_content:
+                msg = {"type": "LOAD_TEXT", "text": self.game.text_content}
+                conn.send(json.dumps(msg).encode())
 
     def receive_messages(self):
         while self.running:
@@ -141,7 +147,7 @@ class TypingGame:
         self.ip_frame.pack(pady=10)
         host_ip = socket.gethostbyname(socket.gethostname())
         self.ip_label.config(text=f"你的 IP 地址: {host_ip}")
-        self.network = NetworkHandler(True, host_ip, 12345)
+        self.network = NetworkHandler(True, host_ip, 12345, self)  # 傳遞 self
         self.network.start()
 
     def set_client_mode(self):
@@ -155,7 +161,7 @@ class TypingGame:
 
     def connect_to_host(self):
         host_ip = self.ip_entry.get()
-        self.network = NetworkHandler(False, host_ip, 12345)
+        self.network = NetworkHandler(False, host_ip, 12345, self)
         self.network.connect(host_ip)
         self.network.start()
         self.ip_frame.pack_forget()
