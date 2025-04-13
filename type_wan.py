@@ -174,6 +174,10 @@ class TypingGame:
                     self.opponent_text.delete(1.0, tk.END)
                     self.opponent_text.insert(tk.END, self.text_content)
                     self.opponent_text.config(state=tk.DISABLED)
+                    # 如果是主機，發送文本內容給客戶端
+                    if self.is_host:
+                        msg = {"type": "LOAD_TEXT", "text": self.text_content}
+                        self.network.send_message(msg)
                 if self.is_host or self.is_single_player:
                     self.start_button.config(state=tk.NORMAL)
 
@@ -280,6 +284,17 @@ class TypingGame:
             self.game_started = False
             self.show_result(msg["winner"])
             self.root.unbind("<KeyPress>")
+        elif msg["type"] == "LOAD_TEXT":
+            # 客戶端接收文本並更新顯示區域
+            self.text_content = msg["text"]
+            self.my_text.config(state=tk.NORMAL)
+            self.my_text.delete(1.0, tk.END)
+            self.my_text.insert(tk.END, self.text_content)
+            self.my_text.config(state=tk.DISABLED)
+            self.opponent_text.config(state=tk.NORMAL)
+            self.opponent_text.delete(1.0, tk.END)
+            self.opponent_text.insert(tk.END, self.text_content)
+            self.opponent_text.config(state=tk.DISABLED)
 
     def show_result(self, winner):
         messagebox.showinfo("遊戲結束", f"勝者: {winner}\n我的分數: {self.my_score}\n對手分數: {self.opponent_score}")
