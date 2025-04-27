@@ -1,0 +1,79 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+class GameUI:
+    def __init__(self):
+        self.game_logic = None
+        self.root = tk.Tk()
+        self.root.title("英文打字遊戲")
+        self.root.geometry("800x600")
+        
+    def set_game_logic(self, game_logic):
+        self.game_logic = game_logic
+
+    def setup_ui(self):
+        self.mode_frame = tk.Frame(self.root)
+        self.mode_frame.pack(pady=20)
+        tk.Label(self.mode_frame, text="選擇模式：").pack(side=tk.LEFT)
+        tk.Button(self.mode_frame, text="建立房間 (Host)", command=self.game_logic.set_host_mode).pack(side=tk.LEFT, padx=10)
+        tk.Button(self.mode_frame, text="加入房間 (Client)", command=self.game_logic.set_client_mode).pack(side=tk.LEFT, padx=10)
+        tk.Button(self.mode_frame, text="單人模式", command=self.game_logic.set_single_player_mode).pack(side=tk.LEFT, padx=10)
+
+        self.ip_frame = tk.Frame(self.root)
+        self.ip_label = tk.Label(self.ip_frame, text="")
+        self.ip_label.pack(side=tk.LEFT)
+        self.ip_entry = tk.Entry(self.ip_frame)
+        self.connect_button = tk.Button(self.ip_frame, text="連接", command=self.game_logic.connect_to_host)
+
+        self.start_button = tk.Button(self.root, text="開始遊戲", command=self.game_logic.start_game, state=tk.DISABLED)
+        self.start_button.pack(pady=10)
+
+        self.text_frame = tk.Frame(self.root)
+        self.text_frame.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+        self.my_text = tk.Text(self.text_frame, wrap=tk.WORD, font=("Courier", 12), state=tk.DISABLED, height=10)
+        self.my_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.opponent_text = tk.Text(self.text_frame, wrap=tk.WORD, font=("Courier", 12), state=tk.DISABLED, height=10)
+        self.opponent_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+
+        self.score_frame = tk.Frame(self.root)
+        self.score_frame.pack(pady=5)
+        self.my_score_label = tk.Label(self.score_frame, text="我的分數: 0")
+        self.my_score_label.pack(side=tk.LEFT, padx=20)
+        self.opponent_score_label = tk.Label(self.score_frame, text="對手分數: 0")
+        self.opponent_score_label.pack(side=tk.LEFT, padx=20)
+        self.timer_label = tk.Label(self.score_frame, text="剩餘時間: 60")
+        self.timer_label.pack(side=tk.LEFT, padx=20)
+
+        self.load_button = tk.Button(self.root, text="加載文本", command=self.game_logic.load_text)
+        self.load_button.pack(pady=5)
+
+        self.root.bind("<KeyPress>", self.game_logic.on_key_press)
+        self.game_logic.process_queue()
+            
+    def update_progress(self, text_widget, index):
+        text_widget.tag_remove("current", 1.0, tk.END)
+        if index < len(self.game_logic.state.text_content):
+            text_widget.tag_add("current", f"1.0 + {index} chars", f"1.0 + {index + 1} chars")
+            text_widget.tag_config("current", background="yellow")
+
+    def show_error_highlight(self, text_widget, index):
+        text_widget.tag_add("error", f"1.0 + {index} chars", f"1.0 + {index + 1} chars")
+        text_widget.tag_config("error", background="red")
+        self.root.after(500, lambda: text_widget.tag_remove("error", 1.0, tk.END))
+
+    def update_timer_display(self, remaining):
+        self.timer_label.config(text=f"剩餘時間: {int(remaining)}")
+
+    def update_score_display(self, my_score, opponent_score=None):
+        self.my_score_label.config(text=f"我的分數: {my_score}")
+        if opponent_score is not None:
+            self.opponent_score_label.config(text=f"對手分數: {opponent_score}")
+
+    def show_result(self, winner, my_score, opponent_score):
+        messagebox.showinfo("遊戲結束", f"勝者: {winner}\n我的分數: {my_score}\n對手分數: {opponent_score}")
+
+    def hide_multiplayer_elements(self):
+        self.mode_frame.pack_forget()
+        self.ip_frame.pack_forget()
+        self.opponent_text.pack_forget()
+        self.opponent_score_label.pack_forget()
