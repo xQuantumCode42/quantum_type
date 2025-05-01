@@ -7,6 +7,8 @@ class GameUI:
         self.root = tk.Tk()
         self.root.title("英文打字遊戲")
         self.root.geometry("800x600")
+        self.messagebox = messagebox
+        self.filedialog = filedialog
         
     def set_game_logic(self, game_logic):
         self.game_logic = game_logic
@@ -16,14 +18,24 @@ class GameUI:
         self.mode_frame.pack(pady=20)
         tk.Label(self.mode_frame, text="選擇模式：").pack(side=tk.LEFT)
         tk.Button(self.mode_frame, text="建立房間 (Host)", command=self.game_logic.set_host_mode).pack(side=tk.LEFT, padx=10)
-        tk.Button(self.mode_frame, text="加入房間 (Client)", command=self.game_logic.set_client_mode).pack(side=tk.LEFT, padx=10)
+        tk.Button(self.mode_frame, text="加入房間 (Client)", command=self.show_client_ip_entry).pack(side=tk.LEFT, padx=10)
         tk.Button(self.mode_frame, text="單人模式", command=self.game_logic.set_single_player_mode).pack(side=tk.LEFT, padx=10)
 
+        # IP frames for client and host
         self.ip_frame = tk.Frame(self.root)
-        self.ip_label = tk.Label(self.ip_frame, text="")
+        self.ip_label = tk.Label(self.ip_frame, text="輸入主機IP:")
         self.ip_label.pack(side=tk.LEFT)
         self.ip_entry = tk.Entry(self.ip_frame)
+        self.ip_entry.pack(side=tk.LEFT, padx=5)
         self.connect_button = tk.Button(self.ip_frame, text="連接", command=self.game_logic.connect_to_host)
+        self.connect_button.pack(side=tk.LEFT, padx=5)
+        
+        # Host info frame (new)
+        self.host_frame = tk.Frame(self.root)
+        self.host_ip_label = tk.Label(self.host_frame, text="", font=("Arial", 12, "bold"))
+        self.host_ip_label.pack(pady=10)
+        self.host_status_label = tk.Label(self.host_frame, text="等待客戶端連接...", fg="blue")
+        self.host_status_label.pack(pady=5)
 
         self.start_button = tk.Button(self.root, text="開始遊戲", command=self.game_logic.start_game, state=tk.DISABLED)
         self.start_button.pack(pady=10)
@@ -49,10 +61,24 @@ class GameUI:
 
         self.root.bind("<KeyPress>", self.game_logic.on_key_press)
         self.game_logic.process_queue()
+    
+    def show_client_ip_entry(self):
+        """Show the IP entry frame for client mode"""
+        self.mode_frame.pack_forget()
+        self.host_frame.pack_forget()  # Hide host frame if visible
+        self.ip_frame.pack(pady=20)
+        self.ip_entry.focus_set()
+    
+    def display_host_info(self, host_ip):
+        """Display host information"""
+        self.ip_frame.pack_forget()  # Hide client frame if visible
+        self.host_frame.pack(pady=20)
+        self.host_ip_label.config(text=f"房間IP地址: {host_ip}")
+        self.host_status_label.config(text="等待客戶端連接...")
             
     def update_progress(self, text_widget, index):
         text_widget.tag_remove("current", 1.0, tk.END)
-        if index < len(self.game_logic.state.text_content):
+        if index < len(self.game_logic.text_content):
             text_widget.tag_add("current", f"1.0 + {index} chars", f"1.0 + {index + 1} chars")
             text_widget.tag_config("current", background="yellow")
 
@@ -69,11 +95,30 @@ class GameUI:
         if opponent_score is not None:
             self.opponent_score_label.config(text=f"對手分數: {opponent_score}")
 
-    def show_result(self, winner, my_score, opponent_score):
-        messagebox.showinfo("遊戲結束", f"勝者: {winner}\n我的分數: {my_score}\n對手分數: {opponent_score}")
+    def show_result(self, winner, my_score=None, opponent_score=None):
+        if my_score is not None and opponent_score is not None:
+            messagebox.showinfo("遊戲結束", f"勝者: {winner}\n我的分數: {my_score}\n對手分數: {opponent_score}")
+        else:
+            messagebox.showinfo("遊戲結束", f"勝者: {winner}")
 
     def hide_multiplayer_elements(self):
         self.mode_frame.pack_forget()
         self.ip_frame.pack_forget()
+        self.host_frame.pack_forget()
         self.opponent_text.pack_forget()
         self.opponent_score_label.pack_forget()
+
+    def connect_to_host(self):
+        """Called after successful connection to host"""
+        # Hide IP entry frame
+        self.ip_frame.pack_forget()
+        # Show connection success message
+        self.host_frame.pack(pady=20)
+        self.host_ip_label.config(text="已連接到主機")
+        self.host_status_label.config(text="等待主機開始遊戲...", fg="green")
+        
+        # Ensure opponent UI elements are visible
+        if not self.opponent_text.winfo_ismapped():
+            self.opponent_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        if not self.opponent_score_label.winfo_ismapped():
+            self.opponent_score_label.pack(side=tk.LEFT, padx=20)
