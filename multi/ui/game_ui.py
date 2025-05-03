@@ -9,6 +9,7 @@ class GameUI:
         self.root.geometry("800x600")
         self.messagebox = messagebox
         self.filedialog = filedialog
+        self.countdown_label = None
         
     def set_game_logic(self, game_logic):
         self.game_logic = game_logic
@@ -55,6 +56,12 @@ class GameUI:
         self.opponent_score_label.pack(side=tk.LEFT, padx=20)
         self.timer_label = tk.Label(self.score_frame, text="剩餘時間: 60")
         self.timer_label.pack(side=tk.LEFT, padx=20)
+        self.countdown_label = tk.Label(
+            self.root,
+            text="",
+            font=("Arial", 48, "bold"),
+            fg="red"
+        )
 
         self.load_button = tk.Button(self.root, text="加載文本", command=self.game_logic.load_text)
         self.load_button.pack(pady=5)
@@ -122,3 +129,20 @@ class GameUI:
             self.opponent_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
         if not self.opponent_score_label.winfo_ismapped():
             self.opponent_score_label.pack(side=tk.LEFT, padx=20)
+            
+    def show_countdown(self, count):
+        # 顯示倒計時數字
+        self.countdown_label.config(text=str(count))
+        self.countdown_label.place(
+            relx=0.5,
+            rely=0.5,
+            anchor="center"
+        )
+        
+        # 如果是最後一個數字，設置一秒後隱藏
+        if count == 1:
+            self.root.after(1000, self.hide_countdown)
+
+    def hide_countdown(self):
+        # 隱藏倒計時標籤
+        self.countdown_label.place_forget()

@@ -48,14 +48,44 @@ class GameLogic:
         self.state.network.start()
 
     def start_game(self):
+        if not self.state.is_single_player:
+            # 開始倒計時而不是直接開始遊戲
+            self.start_countdown()
+        else:
+            self.start_actual_game()
+
+    def start_countdown(self):
+        if self.state.is_host:
+            # 主機發送倒計時開始的消息
+            msg = {
+                "type": "COUNTDOWN_START",
+                "time": time.time()
+            }
+            self.state.network.send_message(msg)
+        self.countdown(3)  # 從3開始倒計時
+
+    def countdown(self, count):
+        if count > 0:
+            # 顯示當前倒計時數字
+            self.ui.show_countdown(count)
+            # 一秒後顯示下一個數字
+            self.ui.root.after(1000, lambda: self.countdown(count - 1))
+        else:
+            # 倒計時結束，開始遊戲
+            self.start_actual_game()
+
+    def start_actual_game(self):
         self.state.start_time = time.time()
         self.state.game_started = True
         self.start_timer()
         self.ui.root.focus_set()
         self.highlight_current_character()
         if not self.state.is_single_player and self.state.is_host:
-            print(f"Sending START message to client")  # Debug print
-            msg = {"type": "START", "start_time": self.state.start_time}
+            msg = {
+                "type": "START",
+                "start_time": self.state.start_time,
+                "text": self.state.text_content
+            }
             self.state.network.send_message(msg)
 
     def start_timer(self):
@@ -284,6 +314,9 @@ class GameLogic:
             if not self.state.is_host:
                 self.ui.messagebox.showinfo("文本已加載", "主機已加載文本，等待遊戲開始")
                 self.ui.host_status_label.config(text="主機已加載文本，等待遊戲開始", fg="blue")
+        elif msg["type"] == "COUNTDOWN_START":
+            # 客戶端收到倒計時開始的消息
+            self.countdown(3)
 
     def load_text(self):
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
