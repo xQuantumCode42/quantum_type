@@ -11,6 +11,12 @@ class GameUI:
         self.messagebox = messagebox
         self.filedialog = filedialog
         self.countdown_label = None
+        self.is_fullscreen = False  # 添加全螢幕狀態追蹤
+        
+        # 綁定 F11 切換全螢幕
+        self.root.bind("<F11>", self.toggle_fullscreen)
+        # 綁定 Escape 退出全螢幕
+        self.root.bind("<Escape>", self.exit_fullscreen)
 
     def set_game_logic(self, game_logic):
         self.game_logic = game_logic
@@ -180,3 +186,17 @@ class GameUI:
     def hide_countdown(self):
         # 隱藏倒計時標籤
         self.countdown_label.place_forget()
+
+    def toggle_fullscreen(self, event=None):
+        self.is_fullscreen = not self.is_fullscreen
+        self.root.attributes("-fullscreen", self.is_fullscreen)
+        if not self.is_fullscreen:
+            # 恢復到固定大小
+            self.root.geometry("800x600")
+        return "break"  # 防止事件繼續傳播
+
+    def exit_fullscreen(self, event=None):
+        self.is_fullscreen = False
+        self.root.attributes("-fullscreen", False)
+        self.root.geometry("800x600")
+        return "break"  # 防止事件繼續傳播
