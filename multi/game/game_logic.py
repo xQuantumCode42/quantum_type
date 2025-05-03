@@ -121,6 +121,9 @@ class GameLogic:
             self.process_key_input(event)
     
     def process_key_input(self, event):
+        if event.keysym in ['Shift_L', 'Shift_R', 'Control_L', 'Control_R', 'Alt_L', 'Alt_R']:
+            return
+        
         text = self.text_content
         if self.state.my_progress < len(text):
             current_char = text[self.state.my_progress]
