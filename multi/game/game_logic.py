@@ -5,12 +5,13 @@ import tkinter as tk
 import queue
 import tkinter.filedialog as filedialog
 
+
 class GameLogic:
     def __init__(self, game_state, ui):
         self.state = game_state
         self.ui = ui
         self.text_content = ""
-        
+
     def set_single_player_mode(self):
         self.state.is_single_player = True
         self.ui.hide_multiplayer_elements()
@@ -19,7 +20,7 @@ class GameLogic:
     def set_host_mode(self):
         self.state.is_host = True
         self.state.is_single_player = False
-        
+
         # Get local IP address instead of possibly getting WAN IP
         try:
             # This trick gets the IP used to connect to local network
@@ -30,7 +31,7 @@ class GameLogic:
         except:
             # Fallback if the above method fails
             host_ip = socket.gethostbyname(socket.gethostname())
-        
+
         self.state.network = NetworkHandler(True, host_ip, 12345)
         self.state.network.set_game(self)
         self.state.network.start()
@@ -57,10 +58,7 @@ class GameLogic:
     def start_countdown(self):
         if self.state.is_host:
             # 主機發送倒計時開始的消息
-            msg = {
-                "type": "COUNTDOWN_START",
-                "time": time.time()
-            }
+            msg = {"type": "COUNTDOWN_START", "time": time.time()}
             self.state.network.send_message(msg)
         self.countdown(3)  # 從3開始倒計時
 
@@ -84,7 +82,7 @@ class GameLogic:
             msg = {
                 "type": "START",
                 "start_time": self.state.start_time,
-                "text": self.state.text_content
+                "text": self.state.text_content,
             }
             self.state.network.send_message(msg)
 
@@ -115,52 +113,83 @@ class GameLogic:
             return "Client"
         else:
             return "平手"
-    
+
     def on_key_press(self, event):
         if self.state.game_started:
             self.process_key_input(event)
-    
+
     def process_key_input(self, event):
-        if event.keysym in ['Shift_L', 'Shift_R', 'Control_L', 'Control_R', 'Alt_L', 'Alt_R']:
+        if event.keysym in [
+            "Shift_L",
+            "Shift_R",
+            "Control_L",
+            "Control_R",
+            "Alt_L",
+            "Alt_R",
+        ]:
             return
-        
+
         text = self.text_content
         if self.state.my_progress < len(text):
             current_char = text[self.state.my_progress]
-            
-            if current_char == '\n':  # 當前字符是換行符
+
+            if current_char == "\n":  # 當前字符是換行符
                 if event.keysym == "Return":  # 玩家按下 Enter 鍵
                     self.state.my_progress += 1
                     self.state.my_score += 1
                     self.ui.update_progress(self.ui.my_text, self.state.my_progress)
-                    self.ui.my_score_label.config(text=f"我的分數: {self.state.my_score}")
+                    self.ui.my_score_label.config(
+                        text=f"我的分數: {self.state.my_score}"
+                    )
                     self.highlight_current_character()
                     if not self.state.is_single_player:
-                        msg = {"type": "PROGRESS", "index": self.state.my_progress, "score": self.state.my_score}
+                        msg = {
+                            "type": "PROGRESS",
+                            "index": self.state.my_progress,
+                            "score": self.state.my_score,
+                        }
                         self.state.network.send_message(msg)
                 else:
                     # 錯誤輸入，顯示紅色高亮提示
-                    self.ui.my_text.tag_add("error", f"1.0 + {self.state.my_progress} chars", f"1.0 + {self.state.my_progress + 1} chars")
+                    self.ui.my_text.tag_add(
+                        "error",
+                        f"1.0 + {self.state.my_progress} chars",
+                        f"1.0 + {self.state.my_progress + 1} chars",
+                    )
                     self.ui.my_text.tag_config("error", background="red")
-                    self.ui.root.after(500, lambda: self.ui.my_text.tag_remove("error", 1.0, tk.END))
+                    self.ui.root.after(
+                        500, lambda: self.ui.my_text.tag_remove("error", 1.0, tk.END)
+                    )
                     self.ui.root.after(501, self.highlight_current_character)
             else:  # 當前字符不是換行符
                 if event.char == current_char:
                     self.state.my_progress += 1
                     self.state.my_score += 1
                     self.ui.update_progress(self.ui.my_text, self.state.my_progress)
-                    self.ui.my_score_label.config(text=f"我的分數: {self.state.my_score}")
+                    self.ui.my_score_label.config(
+                        text=f"我的分數: {self.state.my_score}"
+                    )
                     self.highlight_current_character()
                     if not self.state.is_single_player:
-                        msg = {"type": "PROGRESS", "index": self.state.my_progress, "score": self.state.my_score}
+                        msg = {
+                            "type": "PROGRESS",
+                            "index": self.state.my_progress,
+                            "score": self.state.my_score,
+                        }
                         self.state.network.send_message(msg)
                 else:
                     # 錯誤輸入，顯示紅色高亮提示
-                    self.ui.my_text.tag_add("error", f"1.0 + {self.state.my_progress} chars", f"1.0 + {self.state.my_progress + 1} chars")
+                    self.ui.my_text.tag_add(
+                        "error",
+                        f"1.0 + {self.state.my_progress} chars",
+                        f"1.0 + {self.state.my_progress + 1} chars",
+                    )
                     self.ui.my_text.tag_config("error", background="red")
-                    self.ui.root.after(500, lambda: self.ui.my_text.tag_remove("error", 1.0, tk.END))
+                    self.ui.root.after(
+                        500, lambda: self.ui.my_text.tag_remove("error", 1.0, tk.END)
+                    )
                     self.ui.root.after(501, self.highlight_current_character)
-    
+
     def process_queue(self):
         if not self.state.is_single_player:
             try:
@@ -177,12 +206,16 @@ class GameLogic:
             self.ui.messagebox.showinfo("Client 已加入", "Client 已加入房間")
             self.ui.start_button.config(state=tk.NORMAL)
             if self.state.is_host:
-                self.ui.host_status_label.config(text="客戶端已連接，可以開始遊戲", fg="green")
+                self.ui.host_status_label.config(
+                    text="客戶端已連接，可以開始遊戲", fg="green"
+                )
         elif msg["type"] == "CLIENT_CONNECTED":
             # Host receives confirmation from client
             if self.state.is_host:
                 self.ui.messagebox.showinfo("客戶端已連接", "客戶端已成功連接到房間")
-                self.ui.host_status_label.config(text="客戶端已連接，可以開始遊戲", fg="green")
+                self.ui.host_status_label.config(
+                    text="客戶端已連接，可以開始遊戲", fg="green"
+                )
                 self.ui.start_button.config(state=tk.NORMAL)
         elif msg["type"] == "START":
             self.state.start_time = msg["start_time"]
@@ -201,7 +234,9 @@ class GameLogic:
             self.state.opponent_progress = msg["index"]
             self.state.opponent_score = msg["score"]
             self.ui.update_progress(self.ui.opponent_text, self.state.opponent_progress)
-            self.ui.opponent_score_label.config(text=f"對手分數: {self.state.opponent_score}")
+            self.ui.opponent_score_label.config(
+                text=f"對手分數: {self.state.opponent_score}"
+            )
         elif msg["type"] == "END":
             self.state.game_started = False
             self.ui.show_result(msg["winner"])
@@ -220,78 +255,92 @@ class GameLogic:
                 self.ui.my_text.delete(1.0, tk.END)
                 self.ui.opponent_text.config(state=tk.NORMAL)
                 self.ui.opponent_text.delete(1.0, tk.END)
-                
+
                 # Show progress message
                 if not self.state.is_host:
-                    self.ui.host_status_label.config(text=f"正在接收文本 (0/{chunk_count})", fg="blue")
+                    self.ui.host_status_label.config(
+                        text=f"正在接收文本 (0/{chunk_count})", fg="blue"
+                    )
             except Exception as e:
                 print(f"Error initializing text chunks: {str(e)}")
-        
+
         elif msg["type"] == "TEXT_CHUNK":
             try:
                 # Store the received chunk
                 index = msg["index"]
                 chunk = msg["chunk"]
-                
+
                 # Check if we have the text_chunks list initialized
-                if not hasattr(self.state, 'text_chunks') or not self.state.text_chunks:
+                if not hasattr(self.state, "text_chunks") or not self.state.text_chunks:
                     print("Text chunks not initialized, creating new list")
-                    if hasattr(self.state, 'total_chunks') and self.state.total_chunks > 0:
+                    if (
+                        hasattr(self.state, "total_chunks")
+                        and self.state.total_chunks > 0
+                    ):
                         self.state.text_chunks = [""] * self.state.total_chunks
                     else:
                         self.state.text_chunks = [""] * 10  # Default size
                         self.state.total_chunks = 10
                     self.state.received_chunks = 0
-                
+
                 # Ensure index is within range
                 if index < len(self.state.text_chunks):
                     self.state.text_chunks[index] = chunk
                     self.state.received_chunks += 1
                     print(f"Received chunk {index+1}/{self.state.total_chunks}")
-                    
+
                     # Update progress
                     if not self.state.is_host:
-                        self.ui.host_status_label.config(text=f"正在接收文本 ({self.state.received_chunks}/{self.state.total_chunks})", fg="blue")
+                        self.ui.host_status_label.config(
+                            text=f"正在接收文本 ({self.state.received_chunks}/{self.state.total_chunks})",
+                            fg="blue",
+                        )
                 else:
-                    print(f"Chunk index {index} out of range (max: {len(self.state.text_chunks)-1})")
+                    print(
+                        f"Chunk index {index} out of range (max: {len(self.state.text_chunks)-1})"
+                    )
             except Exception as e:
                 print(f"Error processing text chunk: {str(e)}")
-        
+
         elif msg["type"] == "TEXT_COMPLETE":
             try:
                 # All chunks received, combine them
-                if hasattr(self.state, 'text_chunks') and self.state.text_chunks:
+                if hasattr(self.state, "text_chunks") and self.state.text_chunks:
                     self.text_content = "".join(self.state.text_chunks)
                     print(f"Text complete, total size: {len(self.text_content)}")
-                    
+
                     # Update the UI
                     self.ui.my_text.config(state=tk.NORMAL)
                     self.ui.my_text.delete(1.0, tk.END)
                     self.ui.my_text.insert(tk.END, self.text_content)
                     self.ui.my_text.config(state=tk.DISABLED)
-                    
+
                     # Make sure opponent text is visible for client
                     self.ui.opponent_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
                     self.ui.opponent_score_label.pack(side=tk.LEFT, padx=20)
-                    
+
                     self.ui.opponent_text.config(state=tk.NORMAL)
                     self.ui.opponent_text.delete(1.0, tk.END)
                     self.ui.opponent_text.insert(tk.END, self.text_content)
                     self.ui.opponent_text.config(state=tk.DISABLED)
-                    
+
                     # Reset progress counter
                     self.state.my_progress = 0
                     self.highlight_current_character()
-                    
+
                     # Show notification for client
                     if not self.state.is_host:
-                        self.ui.messagebox.showinfo("文本已加載", "主機已加載文本，等待遊戲開始")
-                        self.ui.host_status_label.config(text="主機已加載文本，等待遊戲開始", fg="blue")
+                        self.ui.messagebox.showinfo(
+                            "文本已加載", "主機已加載文本，等待遊戲開始"
+                        )
+                        self.ui.host_status_label.config(
+                            text="主機已加載文本，等待遊戲開始", fg="blue"
+                        )
                 else:
                     print("Error: text_chunks not initialized or empty")
             except Exception as e:
                 print(f"Error processing text complete: {str(e)}")
-                
+
         elif msg["type"] == "LOAD_TEXT":
             # 客戶端接收文本並更新顯示區域
             self.text_content = msg["text"]
@@ -299,24 +348,28 @@ class GameLogic:
             self.ui.my_text.delete(1.0, tk.END)
             self.ui.my_text.insert(tk.END, self.text_content)
             self.ui.my_text.config(state=tk.DISABLED)
-            
+
             # Make sure opponent text is visible for client
             self.ui.opponent_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
             self.ui.opponent_score_label.pack(side=tk.LEFT, padx=20)
-            
+
             self.ui.opponent_text.config(state=tk.NORMAL)
             self.ui.opponent_text.delete(1.0, tk.END)
             self.ui.opponent_text.insert(tk.END, self.text_content)
             self.ui.opponent_text.config(state=tk.DISABLED)
-            
+
             # Reset progress counter
             self.state.my_progress = 0
             self.highlight_current_character()
-            
+
             # Show notification for client
             if not self.state.is_host:
-                self.ui.messagebox.showinfo("文本已加載", "主機已加載文本，等待遊戲開始")
-                self.ui.host_status_label.config(text="主機已加載文本，等待遊戲開始", fg="blue")
+                self.ui.messagebox.showinfo(
+                    "文本已加載", "主機已加載文本，等待遊戲開始"
+                )
+                self.ui.host_status_label.config(
+                    text="主機已加載文本，等待遊戲開始", fg="blue"
+                )
         elif msg["type"] == "COUNTDOWN_START":
             # 客戶端收到倒計時開始的消息
             self.countdown(3)
@@ -325,10 +378,10 @@ class GameLogic:
         file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
         if file_path:
             try:
-                with open(file_path, 'r', encoding='utf-8') as file:
+                with open(file_path, "r", encoding="utf-8") as file:
                     self.text_content = file.read()
                     print(f"Loaded text file with {len(self.text_content)} characters")
-                    
+
                     # Update host's text display
                     self.ui.my_text.config(state=tk.NORMAL)
                     self.ui.my_text.delete(1.0, tk.END)
@@ -336,22 +389,26 @@ class GameLogic:
                     self.ui.my_text.config(state=tk.DISABLED)
                     self.state.my_progress = 0
                     self.highlight_current_character()
-                    
+
                     if not self.state.is_single_player:
                         # Update host's opponent display
                         self.ui.opponent_text.config(state=tk.NORMAL)
                         self.ui.opponent_text.delete(1.0, tk.END)
                         self.ui.opponent_text.insert(tk.END, self.text_content)
                         self.ui.opponent_text.config(state=tk.DISABLED)
-                        
+
                         # If host, send text to client
                         if self.state.is_host:
-                            print(f"Host sending text to client, length: {len(self.text_content)}")
+                            print(
+                                f"Host sending text to client, length: {len(self.text_content)}"
+                            )
                             msg = {"type": "LOAD_TEXT", "text": self.text_content}
                             self.state.network.send_message(msg)
                             # Show confirmation message
-                            self.ui.messagebox.showinfo("文本已加載", "文本已加載，等待開始遊戲")
-                    
+                            self.ui.messagebox.showinfo(
+                                "文本已加載", "文本已加載，等待開始遊戲"
+                            )
+
                     # Enable start button
                     if self.state.is_host or self.state.is_single_player:
                         self.ui.start_button.config(state=tk.NORMAL)
@@ -364,21 +421,21 @@ class GameLogic:
         if not host_ip:
             self.ui.messagebox.showerror("錯誤", "請輸入主機IP地址")
             return
-            
+
         # Set client mode first
         self.state.is_host = False
         self.state.is_single_player = False
-        
+
         # Then create network connection
         try:
             self.state.network = NetworkHandler(False, host_ip, 12345)
             self.state.network.set_game(self)
             self.state.network.connect(host_ip)
             self.state.network.start()
-            
+
             # Update UI to show successful connection
             self.ui.connect_to_host()
-            
+
             # Send a message to host to confirm connection
             msg = {"type": "CLIENT_CONNECTED"}
             self.state.network.send_message(msg)
@@ -387,9 +444,17 @@ class GameLogic:
 
     def highlight_current_character(self):
         """Highlight the current character position with yellow background"""
-        if hasattr(self, 'text_content') and self.text_content and self.state.my_progress < len(self.text_content):
+        if (
+            hasattr(self, "text_content")
+            and self.text_content
+            and self.state.my_progress < len(self.text_content)
+        ):
             # Remove any previous highlight
             self.ui.my_text.tag_remove("current", "1.0", tk.END)
             # Add highlight for current character
-            self.ui.my_text.tag_add("current", f"1.0 + {self.state.my_progress} chars", f"1.0 + {self.state.my_progress + 1} chars")
+            self.ui.my_text.tag_add(
+                "current",
+                f"1.0 + {self.state.my_progress} chars",
+                f"1.0 + {self.state.my_progress + 1} chars",
+            )
             self.ui.my_text.tag_config("current", background="yellow")

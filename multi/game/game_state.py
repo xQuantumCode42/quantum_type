@@ -1,6 +1,7 @@
 import queue
 import time
 
+
 class GameState:
     def __init__(self):
         self.is_host = False
@@ -14,7 +15,7 @@ class GameState:
         self.opponent_progress = 0
         self.opponent_score = 0
         self.text_content = ""
-        
+
         # Add attributes for text chunking
         self.text_chunks = []
         self.total_chunks = 0
