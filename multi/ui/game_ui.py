@@ -23,7 +23,7 @@ class GameUI:
 
     def setup_ui(self):
         self.mode_frame = tk.Frame(self.root)
-        self.mode_frame.pack(pady=20)
+        self.mode_frame.pack(side=tk.TOP, pady=20)
         tk.Label(self.mode_frame, text="選擇模式：").pack(side=tk.LEFT)
         tk.Button(
             self.mode_frame,
@@ -61,13 +61,22 @@ class GameUI:
         )
         self.host_status_label.pack(pady=5)
 
+        self.basic_frame = tk.Frame(self.root)
+        self.basic_frame.pack(pady=20)
         self.start_button = tk.Button(
-            self.root,
+            self.basic_frame,
             text="開始遊戲",
             command=self.game_logic.start_game,
             state=tk.DISABLED,
         )
-        self.start_button.pack(pady=10)
+        self.start_button.pack(side=tk.LEFT, padx=10)
+        self.back_button = tk.Button(
+            self.basic_frame,
+            text="回主選單",
+            command=self.game_logic.back_to_home,
+            state=tk.DISABLED,
+        )
+        self.back_button.pack(side=tk.LEFT, padx=10)
 
         self.text_frame = tk.Frame(self.root)
         self.text_frame.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
@@ -110,6 +119,7 @@ class GameUI:
 
     def show_client_ip_entry(self):
         """Show the IP entry frame for client mode"""
+        self.back_button.config(state=tk.NORMAL)
         self.mode_frame.pack_forget()
         self.host_frame.pack_forget()  # Hide host frame if visible
         self.ip_frame.pack(pady=20)

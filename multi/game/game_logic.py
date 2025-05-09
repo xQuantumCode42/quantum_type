@@ -16,10 +16,12 @@ class GameLogic:
         self.state.is_single_player = True
         self.ui.hide_multiplayer_elements()
         self.ui.start_button.config(state=tk.NORMAL)
+        self.ui.back_button.config(state=tk.NORMAL)
 
     def set_host_mode(self):
         self.state.is_host = True
         self.state.is_single_player = False
+        self.ui.back_button.config(state=tk.NORMAL)
 
         # Get local IP address instead of possibly getting WAN IP
         try:
@@ -458,3 +460,37 @@ class GameLogic:
                 f"1.0 + {self.state.my_progress + 1} chars",
             )
             self.ui.my_text.tag_config("current", background="yellow")
+    
+    def back_to_home(self):
+        # Stop network handler if active (host mode cleanup)
+        if hasattr(self.state, 'network') and self.state.network:
+            self.state.network.stop()  # Assumes NetworkHandler has a stop() method
+            self.state.network = None
+
+        # Hide mode-specific frames
+        self.ui.ip_frame.pack_forget()    # Hide IP entry frame (client mode)
+        self.ui.host_frame.pack_forget()  # Hide host info frame (host mode)
+
+        # Show the mode selection frame (main menu)
+        self.ui.mode_frame.pack(pady=20, before=self.ui.basic_frame)
+
+        # Clear text areas
+        self.ui.my_text.config(state=tk.NORMAL)
+        self.ui.my_text.delete(1.0, tk.END)
+        self.ui.my_text.config(state=tk.DISABLED)
+        self.ui.opponent_text.config(state=tk.NORMAL)
+        self.ui.opponent_text.delete(1.0, tk.END)
+        self.ui.opponent_text.config(state=tk.DISABLED)
+
+        # Reset score and timer labels to initial values
+        self.ui.my_score_label.config(text="我的分數: 0")
+        self.ui.opponent_score_label.config(text="對手分數: 0")
+        self.ui.timer_label.config(text="剩餘時間: 60")
+
+        # Disable buttons as in initial state
+        self.ui.start_button.config(state=tk.DISABLED)
+        self.ui.back_button.config(state=tk.DISABLED)
+
+        # Reset state variables
+        self.state.is_host = False
+        self.state.is_single_player = False

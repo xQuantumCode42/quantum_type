@@ -308,3 +308,9 @@ class NetworkHandler:
                     "Connection Error", f"Could not connect to host: {str(e)}"
                 )
             self.running = False
+    
+    def stop(self):
+        if self.running:
+            self.running = False
+            if self.sock:
+                self.sock.close()
