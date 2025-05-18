@@ -8,6 +8,8 @@ def main():
     game_ui = GameUI()
     game_logic = GameLogic(game_state, game_ui)
 
+    game_ui.run()
+
 
 if __name__ == "__main__":
     main()
