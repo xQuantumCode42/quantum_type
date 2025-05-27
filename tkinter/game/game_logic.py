@@ -139,7 +139,7 @@ class GameLogic:
                 if event.keysym == "Return":  # 玩家按下 Enter 鍵
                     self.state.my_progress += 1
                     self.state.my_score += 1
-                    self.ui.update_progress(self.ui.my_text, self.state.my_progress)
+                    self.ui.update_my_progress(self.state.my_progress)
                     self.ui.my_score_label.config(
                         text=f"我的分數: {self.state.my_score}"
                     )
@@ -167,7 +167,7 @@ class GameLogic:
                 if event.char == current_char:
                     self.state.my_progress += 1
                     self.state.my_score += 1
-                    self.ui.update_progress(self.ui.my_text, self.state.my_progress)
+                    self.ui.update_my_progress(self.state.my_progress)
                     self.ui.my_score_label.config(
                         text=f"我的分數: {self.state.my_score}"
                     )
@@ -235,7 +235,7 @@ class GameLogic:
         elif msg["type"] == "PROGRESS":
             self.state.opponent_progress = msg["index"]
             self.state.opponent_score = msg["score"]
-            self.ui.update_progress(self.ui.opponent_text, self.state.opponent_progress)
+            self.ui.update_opponent_progress(self.state.opponent_progress)
             self.ui.opponent_score_label.config(
                 text=f"對手分數: {self.state.opponent_score}"
             )
@@ -460,15 +460,15 @@ class GameLogic:
                 f"1.0 + {self.state.my_progress + 1} chars",
             )
             self.ui.my_text.tag_config("current", background="yellow")
-    
+
     def back_to_home(self):
         # Stop network handler if active (host mode cleanup)
-        if hasattr(self.state, 'network') and self.state.network:
+        if hasattr(self.state, "network") and self.state.network:
             self.state.network.stop()  # Assumes NetworkHandler has a stop() method
             self.state.network = None
 
         # Hide mode-specific frames
-        self.ui.ip_frame.pack_forget()    # Hide IP entry frame (client mode)
+        self.ui.ip_frame.pack_forget()  # Hide IP entry frame (client mode)
         self.ui.host_frame.pack_forget()  # Hide host info frame (host mode)
 
         # Show the mode selection frame (main menu)
