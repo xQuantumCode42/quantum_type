@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from abstract_ui import AbstractUI
 
 
-class GameUI:
+class GameUI(AbstractUI):
     def __init__(self):
         self.game_logic = None
         self.root = tk.Tk()
@@ -12,7 +13,7 @@ class GameUI:
         self.filedialog = filedialog
         self.countdown_label = None
         self.is_fullscreen = False  # 添加全螢幕狀態追蹤
-        
+
         # 綁定 F11 切換全螢幕
         self.root.bind("<F11>", self.toggle_fullscreen)
         # 綁定 Escape 退出全螢幕
@@ -139,6 +140,22 @@ class GameUI:
                 "current", f"1.0 + {index} chars", f"1.0 + {index + 1} chars"
             )
             text_widget.tag_config("current", background="yellow")
+
+    def update_my_progress(self, progress):
+        self.my_text.tag_remove("current", 1.0, tk.END)
+        if progress < len(self.game_logic.text_content):
+            self.my_text.tag_add(
+                "current", f"1.0 + {progress} chars", f"1.0 + {progress + 1} chars"
+            )
+            self.my_text.tag_config("current", background="yellow")
+
+    def update_opponent_progress(self, progress):
+        self.opponent_text.tag_remove("current", 1.0, tk.END)
+        if progress < len(self.game_logic.text_content):
+            self.opponent_text.tag_add(
+                "current", f"1.0 + {progress} chars", f"1.0 + {progress + 1} chars"
+            )
+            self.opponent_text.tag_config("current", background="yellow")
 
     def show_error_highlight(self, text_widget, index):
         text_widget.tag_add("error", f"1.0 + {index} chars", f"1.0 + {index + 1} chars")
