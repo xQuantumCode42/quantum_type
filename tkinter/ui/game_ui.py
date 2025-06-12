@@ -3,7 +3,7 @@ from tkinter import filedialog, messagebox
 from abstract_ui import AbstractUI
 
 
-class GameUI(AbstractUI):
+class GameUI:
     def __init__(self):
         self.game_logic = None
         self.root = tk.Tk()
